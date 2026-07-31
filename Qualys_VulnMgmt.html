@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vulnerability Management Report - Windows 10 Endpoint (2026 Active Threats)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1a202c; }
+        .container { max-width: 1200px; }
+        .card {
+            background-color: #ffffff; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease-in-out; border: 1px solid #e5e7eb; cursor: pointer;
+        }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 8px 12px rgba(0,0,0,0.15); }
+        .chart-container { position: relative; height: 320px; padding: 1rem; }
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe; margin: 5% auto; padding: 2rem; border-radius: 1rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 90%; max-width: 800px;
+        }
+        .close-button { color: #aaa; float: right; font-size: 2rem; font-weight: bold; }
+        .close-button:hover, .close-button:focus { color: black; cursor: pointer; }
+        .lifecycle-step {
+            display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; position: relative;
+        }
+        .lifecycle-circle {
+            width: 56px; height: 56px; border-radius: 9999px; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 1.1rem; color: white; margin-bottom: 0.5rem;
+        }
+        .lifecycle-arrow { color: #d1d5db; font-size: 1.5rem; }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-10">
+<div class="container mx-auto">
+
+    <header class="mb-8 text-center">
+        <h1 class="text-4xl md:text-5xl font-bold text-gray-800">Vulnerability Management Report</h1>
+        <p class="text-lg md:text-xl text-gray-600 mt-2">WIN10-LAB-01 · Qualys Cloud Platform · Single-Asset Patch-Lag Scan</p>
+    </header>
+
+    <!-- Scan Scope -->
+    <div class="card p-6 mb-8" style="cursor:default;">
+        <h2 class="text-lg font-bold text-gray-800 mb-3">Scan Scope</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div><span class="text-gray-500">Asset</span><div class="font-semibold text-gray-800">WIN10-LAB-01</div></div>
+            <div><span class="text-gray-500">OS Build</span><div class="font-semibold text-gray-800">Windows 10 22H2</div></div>
+            <div><span class="text-gray-500">Last Patched</span><div class="font-semibold text-gray-800">January 2026 CU</div></div>
+            <div><span class="text-gray-500">Scan Date</span><div class="font-semibold text-gray-800">May 2026</div></div>
+        </div>
+    </div>
+
+    <!-- Executive Summary -->
+    <div class="card p-6 mb-8" style="cursor:default;">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Executive Summary</h2>
+        <p class="text-gray-700 leading-relaxed">
+            This report documents a vulnerability management exercise run against a single virtualized Windows 10
+            22H2 endpoint using a Qualys Virtual Scanner Appliance deployed to the Qualys Cloud Platform, covering
+            the full lifecycle from asset discovery through remediation verification. The scenario models a
+            realistic patch-lag finding: the asset's last applied cumulative update was January 2026, meaning it
+            missed both the February and April 2026 Patch Tuesday cycles by the time of the May 2026 scan. All six
+            findings below are real CVEs affecting this exact Windows 10 build and the components present on a
+            standard install (Shell, MSHTML, Remote Desktop Services, Desktop Window Manager, and Office), all
+            still open on this one host because the two missed patch cycles never closed them, not six unrelated
+            findings pulled from six different systems. Every finding is confirmed under active exploitation and
+            listed in CISA's Known Exploited Vulnerabilities (KEV) catalog, cross-checked against MSRC, NVD,
+            CrowdStrike, Akamai, and Rapid7 advisories. Where a public proof-of-concept exists on GitHub, it's
+            linked below.
+        </p>
+    </div>
+
+    <div class="card p-6 mb-8" style="cursor:default; border-left: 4px solid #dc2626;">
+        <h2 class="text-lg font-bold text-gray-800 mb-2">Threat Context: Two Missed Patch Cycles, One Host</h2>
+        <p class="text-sm text-gray-700 leading-relaxed">
+            Because WIN10-LAB-01 stayed on its January 2026 patch level, it remained exposed to everything Microsoft
+            fixed in February and April. That includes the exact chain APT28 (Fancy Bear) used in the wild:
+            <strong>CVE-2026-21510</strong> (Windows Shell / SmartScreen bypass) combined with
+            <strong>CVE-2026-21513</strong> (MSHTML bypass) to deliver malicious .lnk and HTML files that skip
+            Windows' normal "are you sure?" security prompts. Because the February fix for CVE-2026-21510 was later
+            found incomplete, this same host would also carry <strong>CVE-2026-32202</strong>, a zero-click
+            credential-theft gap, until the April update which it also never received. Separately, an attacker
+            with any foothold on this host could use <strong>CVE-2026-21533</strong> (RDS) or
+            <strong>CVE-2026-21519</strong> (DWM) to jump straight to SYSTEM, and <strong>CVE-2026-21514</strong>
+            remains open in Office Word. This is exactly the scenario a vulnerability management program exists to
+            catch: a single asset falling two cycles behind turns five "Important"-rated bugs into a usable attack
+            chain.
+        </p>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="p-6 flex flex-col items-center justify-center text-center card" onclick="showModal('High')">
+            <div class="text-orange-500 text-5xl font-bold" id="highCount"></div>
+            <div class="text-gray-600 font-medium mt-2">High (CVSS 7.0–8.9)</div>
+        </div>
+        <div class="p-6 flex flex-col items-center justify-center text-center card" onclick="showModal('Medium')">
+            <div class="text-yellow-500 text-5xl font-bold" id="mediumCount"></div>
+            <div class="text-gray-600 font-medium mt-2">Medium (CVSS 4.0–6.9)</div>
+        </div>
+        <div class="p-6 flex flex-col items-center justify-center text-center card" style="cursor:default;">
+            <div class="text-blue-500 text-5xl font-bold">1</div>
+            <div class="text-gray-600 font-medium mt-2">Asset Scanned</div>
+        </div>
+        <div class="p-6 flex flex-col items-center justify-center text-center card" style="cursor:default;">
+            <div class="text-purple-500 text-5xl font-bold" id="kevCount"></div>
+            <div class="text-gray-600 font-medium mt-2">In CISA KEV Catalog</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="card" style="cursor:default;">
+            <h3 class="text-xl font-bold text-gray-800 p-6 pb-2">Findings by Severity</h3>
+            <div class="chart-container"><canvas id="severityChart"></canvas></div>
+        </div>
+        <div class="card" style="cursor:default;">
+            <h3 class="text-xl font-bold text-gray-800 p-6 pb-2">CVSS Score by Finding</h3>
+            <div class="chart-container"><canvas id="cvssChart"></canvas></div>
+        </div>
+        <div class="card" style="cursor:default;">
+            <h3 class="text-xl font-bold text-gray-800 p-6 pb-2">Findings by Vulnerability Class</h3>
+            <div class="chart-container"><canvas id="classChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Vulnerability Management Lifecycle -->
+    <div class="card p-6 mb-8" style="cursor:default;">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Vulnerability Management Lifecycle</h2>
+        <div class="flex flex-col md:flex-row items-center justify-between gap-2">
+            <div class="lifecycle-step">
+                <div class="lifecycle-circle" style="background:#3b82f6;">1</div>
+                <div class="font-semibold text-gray-800 text-sm">Discovery</div>
+                <p class="text-xs text-gray-500 mt-1">Qualys Virtual Scanner Appliance deployed and asset registered on the Cloud Platform.</p>
+            </div>
+            <div class="lifecycle-arrow hidden md:block">&#8594;</div>
+            <div class="lifecycle-step">
+                <div class="lifecycle-circle" style="background:#6366f1;">2</div>
+                <div class="font-semibold text-gray-800 text-sm">Scanning</div>
+                <p class="text-xs text-gray-500 mt-1">Authenticated vulnerability scan against the Windows 10 host.</p>
+            </div>
+            <div class="lifecycle-arrow hidden md:block">&#8594;</div>
+            <div class="lifecycle-step">
+                <div class="lifecycle-circle" style="background:#8b5cf6;">3</div>
+                <div class="font-semibold text-gray-800 text-sm">Prioritization</div>
+                <p class="text-xs text-gray-500 mt-1">Findings ranked by CVSS score, exploit availability, and CISA KEV status.</p>
+            </div>
+            <div class="lifecycle-arrow hidden md:block">&#8594;</div>
+            <div class="lifecycle-step">
+                <div class="lifecycle-circle" style="background:#ec4899;">4</div>
+                <div class="font-semibold text-gray-800 text-sm">Remediation</div>
+                <p class="text-xs text-gray-500 mt-1">Patches, config changes, or workarounds applied per finding.</p>
+            </div>
+            <div class="lifecycle-arrow hidden md:block">&#8594;</div>
+            <div class="lifecycle-step">
+                <div class="lifecycle-circle" style="background:#22c55e;">5</div>
+                <div class="font-semibold text-gray-800 text-sm">Verification</div>
+                <p class="text-xs text-gray-500 mt-1">Rescan confirms the finding no longer detects; closed in the report.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Findings Table -->
+    <div class="card p-6 mb-8" style="cursor:default;">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Findings <span class="text-base font-normal text-gray-500">(click a card above to filter, or a row below for detail)</span></h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs uppercase text-gray-500 border-b border-gray-200">
+                        <th class="py-2 px-3">CVE</th>
+                        <th class="py-2 px-3">Finding</th>
+                        <th class="py-2 px-3">CVSS</th>
+                        <th class="py-2 px-3">Severity</th>
+                        <th class="py-2 px-3">KEV</th>
+                    </tr>
+                </thead>
+                <tbody id="findingsTableBody" class="divide-y divide-gray-100"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Remediation Roadmap -->
+    <div class="card p-6 mb-8" style="cursor:default;">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Remediation Plan</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-gray-100 p-4 rounded-lg shadow">
+                <h4 class="text-lg font-semibold text-gray-700 mb-2">Immediate (0–7 Days)</h4>
+                <ul class="list-disc list-inside text-gray-600 space-y-1 text-sm">
+                    <li>Apply the April 2026 cumulative update to close CVE-2026-32202 (supersedes the Feb fix for CVE-2026-21510).</li>
+                    <li>Apply the February 2026 cumulative update for CVE-2026-21510, -21513, -21533, -21519, -21514 all confirmed KEV entries.</li>
+                    <li>Block .lnk and untrusted HTML attachments at the email gateway until patched.</li>
+                </ul>
+            </div>
+            <div class="bg-gray-100 p-4 rounded-lg shadow">
+                <h4 class="text-lg font-semibold text-gray-700 mb-2">Short-Term (7–30 Days)</h4>
+                <ul class="list-disc list-inside text-gray-600 space-y-1 text-sm">
+                    <li>Restrict registry write access to the RDS TermService key to prevent CVE-2026-21533 exploitation.</li>
+                    <li>Enforce Protected View and disable OLE package activation for Office documents (CVE-2026-21514).</li>
+                    <li>Disable NTLM or restrict it to trusted hosts where feasible (CVE-2026-32202).</li>
+                </ul>
+            </div>
+            <div class="bg-gray-100 p-4 rounded-lg shadow">
+                <h4 class="text-lg font-semibold text-gray-700 mb-2">Verification &amp; Process</h4>
+                <ul class="list-disc list-inside text-gray-600 space-y-1 text-sm">
+                    <li>Re-scan the asset post-patch to confirm each QID no longer detects.</li>
+                    <li>Track exceptions where patching isn't possible with a documented compensating control.</li>
+                    <li>Feed CISA KEV status into prioritization for every future scan cycle, 5 of 6 findings here were KEV-listed.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="vulnerabilityModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle" class="text-2xl font-bold mb-4"></h3>
+        <div id="modalBody" class="space-y-4"></div>
+    </div>
+</div>
+
+<script>
+    const findings = [
+        {
+            cve: 'CVE-2026-21510',
+            name: 'Windows Shell SmartScreen Security Feature Bypass',
+            severity: 'High',
+            cvss: 8.8,
+            category: 'Security Feature Bypass',
+            kev: true,
+            affected: 'Windows 10 (1607, 1809, 21H2, 22H2), Windows 11, Windows Server 2012–2025',
+            description: 'A protection mechanism failure (CWE-693) in Windows Shell lets an attacker bypass Windows SmartScreen and Shell security prompts when a user opens a malicious link or shortcut (.lnk) file. Patched Feb 10, 2026; exploited as a zero-day by the Russia-linked group APT28 against Ukraine and EU targets since December 2025. A follow-up incomplete-patch gap was later tracked as CVE-2026-32202.',
+            remediation: 'Apply the February 2026 cumulative update (KB5075999/KB5075904/KB5075912 line). Interim: restrict execution of .lnk files from untrusted sources via Attack Surface Reduction rules; enable WDAC application whitelisting.',
+            poc: 'github.com/andreassudo/CVE-2026-21510-CVSS-8.8-Important-Windows-Shell-security-feature-bypass'
+        },
+        {
+            cve: 'CVE-2026-21513',
+            name: 'MSHTML Framework Security Feature Bypass',
+            severity: 'High',
+            cvss: 8.8,
+            category: 'Security Feature Bypass',
+            kev: true,
+            affected: 'All supported Windows versions including Windows 10',
+            description: 'Protection mechanism failure in the MSHTML rendering framework lets an attacker bypass browser/Shell security prompts via a malicious HTML or .lnk file, enabling arbitrary file execution. Chained with CVE-2026-21510 by APT28 using a Windows Shell namespace UNC-path DLL load technique (per Akamai root-cause analysis).',
+            remediation: 'Apply the February 2026 cumulative update. Interim: block outbound SMB/UNC path resolution to untrusted hosts; restrict MSHTML-based rendering of untrusted HTML attachments.',
+            poc: 'github.com/advisories/GHSA-rqf6-jf48-p6rm (GitHub Security Advisory)'
+        },
+        {
+            cve: 'CVE-2026-21533',
+            name: 'Windows Remote Desktop Services Elevation of Privilege',
+            severity: 'High',
+            cvss: 7.8,
+            category: 'Privilege Escalation',
+            kev: true,
+            affected: 'Windows 10, Windows 11, Windows Server 2012–2025',
+            description: 'Improper privilege management (CWE-269) in Remote Desktop Services lets a locally authenticated low-privilege attacker modify RDS service-configuration registry keys and add an account to the Administrators group, reaching SYSTEM without user interaction. Discovered and reported by CrowdStrike; retrospective hunting found the exploit binary already in use against U.S. targets.',
+            remediation: 'Apply the February 2026 cumulative update. Interim: restrict write access to HKLM\\SYSTEM\\CurrentControlSet\\Services\\TermService via icacls; monitor Event ID 4672/4688 for anomalous child processes of svchost.exe hosting TermService.',
+            poc: 'github.com/jenniferreire26/CVE-2026-21533 · github.com/fevar54/CVE-2026-21533_Scanner.py (detection PoC)'
+        },
+        {
+            cve: 'CVE-2026-21519',
+            name: 'Desktop Window Manager Elevation of Privilege',
+            severity: 'High',
+            cvss: 7.8,
+            category: 'Privilege Escalation',
+            kev: true,
+            affected: 'Windows 10, Windows 11, Windows Server 2012–2025',
+            description: 'A type-confusion flaw in Desktop Window Manager (DWM) allows a locally authenticated low-privilege attacker to elevate to SYSTEM with no user interaction and low attack complexity. Confirmed exploited in the wild by Microsoft; the second DWM zero-day patched in consecutive months.',
+            remediation: 'Apply the February 2026 cumulative update. Interim: monitor for anomalous dwm.exe child processes and unexpected handle duplication via EDR.',
+            poc: 'No public exploit code identified as of this report; tracked via CISA KEV'
+        },
+        {
+            cve: 'CVE-2026-21514',
+            name: 'Microsoft Office Word Security Feature Bypass',
+            severity: 'High',
+            cvss: 7.8,
+            category: 'Client-Side Code Execution',
+            kev: true,
+            affected: 'Microsoft 365 and Microsoft Office on Windows 10/11',
+            description: 'Reliance on untrusted input in a security decision lets an attacker craft an Office Word document that bypasses OLE security controls when opened, as part of the same February 2026 exploitation wave as CVE-2026-21510/21513.',
+            remediation: 'Apply the February 2026 Office security update. Interim: enforce Protected View for files from the internet; block OLE package activation via Group Policy.',
+            poc: 'No public exploit code identified as of this report; tracked via CISA KEV'
+        },
+        {
+            cve: 'CVE-2026-32202',
+            name: 'Windows Shell Spoofing (Zero-Click Credential Theft)',
+            severity: 'Medium',
+            cvss: 4.3,
+            category: 'Credential Theft',
+            kev: true,
+            affected: 'Windows systems with the incomplete Feb 2026 CVE-2026-21510 patch applied',
+            description: 'An authentication-coercion gap left by an incomplete fix for CVE-2026-21510: auto-parsed .lnk files cause the victim to authenticate to an attacker-controlled server with zero user interaction, enabling NTLM relay/credential theft. Discovered by Akamai and disclosed to Microsoft; fixed in the April 2026 update.',
+            remediation: 'Apply the April 2026 cumulative update (supersedes the February fix for CVE-2026-21510). Interim: block outbound NTLM authentication to untrusted hosts; disable NTLM where feasible in favor of Kerberos.',
+            poc: 'No public exploit code identified as of this report; root-cause writeup published by Akamai'
+        }
+    ];
+
+    function getSeverityCounts() {
+        return findings.reduce((acc, f) => { acc[f.severity] = (acc[f.severity] || 0) + 1; return acc; }, {});
+    }
+    function getClassCounts() {
+        return findings.reduce((acc, f) => { acc[f.category] = (acc[f.category] || 0) + 1; return acc; }, {});
+    }
+
+    function esc(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('findingsTableBody');
+        const sorted = [...findings].sort((a, b) => b.cvss - a.cvss);
+        sorted.forEach((f) => {
+            const idx = findings.indexOf(f);
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50 cursor-pointer';
+            tr.onclick = () => showDetail(idx);
+            const sevColor = f.severity === 'High' ? 'text-orange-500' : 'text-yellow-600';
+            tr.innerHTML = `
+                <td class="py-2 px-3 font-mono text-xs">${esc(f.cve)}</td>
+                <td class="py-2 px-3 font-medium text-gray-800">${esc(f.name)}</td>
+                <td class="py-2 px-3 font-semibold ${sevColor}">${f.cvss.toFixed(1)}</td>
+                <td class="py-2 px-3">${f.severity}</td>
+                <td class="py-2 px-3">${f.kev ? '<span class="text-red-600 font-semibold text-xs">YES</span>' : '<span class="text-gray-400 text-xs">—</span>'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderCharts() {
+        const sevCounts = getSeverityCounts();
+        document.getElementById('highCount').textContent = sevCounts['High'] || 0;
+        document.getElementById('mediumCount').textContent = sevCounts['Medium'] || 0;
+        document.getElementById('kevCount').textContent = findings.filter(f => f.kev).length;
+
+        new Chart(document.getElementById('severityChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['High', 'Medium'],
+                datasets: [{
+                    data: [sevCounts['High'] || 0, sevCounts['Medium'] || 0],
+                    backgroundColor: ['rgba(249, 115, 22, 0.85)', 'rgba(234, 179, 8, 0.85)'],
+                    borderWidth: 1, hoverOffset: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        const sorted = [...findings].sort((a, b) => b.cvss - a.cvss);
+        new Chart(document.getElementById('cvssChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: sorted.map(f => f.cve),
+                datasets: [{
+                    label: 'CVSS v3',
+                    data: sorted.map(f => f.cvss),
+                    backgroundColor: sorted.map(f => f.severity === 'High' ? 'rgba(249,115,22,0.85)' : 'rgba(234,179,8,0.85)'),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                scales: { x: { min: 0, max: 10 } }, plugins: { legend: { display: false } }
+            }
+        });
+
+        const classCounts = getClassCounts();
+        new Chart(document.getElementById('classChart').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: Object.keys(classCounts),
+                datasets: [{
+                    data: Object.values(classCounts),
+                    backgroundColor: ['rgba(79,70,229,0.85)', 'rgba(129,140,248,0.85)', 'rgba(199,210,254,0.85)', 'rgba(236,72,153,0.85)'],
+                    hoverOffset: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } }
+        });
+    }
+
+    function showModal(severity) {
+        const modal = document.getElementById('vulnerabilityModal');
+        document.getElementById('modalTitle').textContent = `${severity} Severity Findings`;
+        const modalBody = document.getElementById('modalBody');
+        modalBody.innerHTML = '';
+        findings.filter(f => f.severity === severity).forEach(f => {
+            const div = document.createElement('div');
+            div.className = 'bg-gray-50 p-4 rounded-lg shadow';
+            div.innerHTML = `
+                <h4 class="text-lg font-bold text-gray-800 mb-1">${esc(f.cve)} — ${esc(f.name)}</h4>
+                <div class="text-sm text-gray-500 mb-2">CVSS: <span class="font-semibold text-gray-700">${f.cvss}</span> | Affected: <span class="font-semibold text-gray-700">${esc(f.affected)}</span></div>
+                <p class="text-gray-700"><strong>Description:</strong> ${esc(f.description)}</p>
+                <p class="text-gray-700 mt-2"><strong>Remediation:</strong> ${esc(f.remediation)}</p>
+                <p class="text-gray-500 mt-2 text-sm"><strong>PoC:</strong> ${esc(f.poc)}</p>
+            `;
+            modalBody.appendChild(div);
+        });
+        modal.style.display = 'block';
+    }
+
+    function showDetail(idx) {
+        const f = findings[idx];
+        const modal = document.getElementById('vulnerabilityModal');
+        document.getElementById('modalTitle').textContent = `${f.cve} — ${f.name}`;
+        document.getElementById('modalBody').innerHTML = `
+            <div class="text-sm text-gray-500 mb-2">CVSS: <span class="font-semibold text-gray-700">${f.cvss}</span> (${f.severity}) | CISA KEV: <span class="font-semibold text-gray-700">${f.kev ? 'Yes' : 'No'}</span></div>
+            <div class="text-sm text-gray-500 mb-3">Affected: ${esc(f.affected)}</div>
+            <p class="text-gray-700"><strong>Description:</strong> ${esc(f.description)}</p>
+            <p class="text-gray-700 mt-2"><strong>Remediation:</strong> ${esc(f.remediation)}</p>
+            <p class="text-gray-500 mt-2 text-sm"><strong>PoC:</strong> ${esc(f.poc)}</p>
+        `;
+        modal.style.display = 'block';
+    }
+
+    function closeModal() { document.getElementById('vulnerabilityModal').style.display = 'none'; }
+    window.onclick = (e) => { if (e.target === document.getElementById('vulnerabilityModal')) closeModal(); };
+
+    window.onload = () => { renderCharts(); renderTable(); };
+</script>
+</body>
+</html>
